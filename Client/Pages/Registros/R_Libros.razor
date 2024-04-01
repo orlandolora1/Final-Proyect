@@ -1,0 +1,416 @@
+﻿@page "/Libro"
+@page "/Libro/{LibroId:int}"
+@inject HttpClient httpClient
+@inject NotificationService notificationService
+@using Newtonsoft.Json;
+@using System.Text;
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.AspNetCore.Components.Authorization;
+@attribute [Authorize]
+
+<EditForm Model="libro" OnValidSubmit="Guardar">
+	<DataAnnotationsValidator />
+
+	<div class="container">
+		<div class="card shadow-lg">
+
+			@*Encabezado*@
+			<div class="card-header">
+				<h3 class="card align-items-center">Books</h3>
+			</div>
+
+			<div class="card-body">
+				@*Buscar*@
+				<div class="col-xs-12 col-sm-12 col-md-8 col-lg-6 col-xl-4">
+					<label>Buscar Libro</label>
+					<div class="input-group mb-3">
+						<InputNumber @bind-Value="libro.LibroId" class="form-control" aria-describedby="buscarButton" />
+						<button @onclick="Buscar" class="btn btn-outline-primary" type="button" id="buscarButton">
+							<i class="oi oi-magnifying-glass" />
+						</button>
+					</div>
+				</div>
+
+				@*Imagen*@
+				<div class="mb-3">
+					<div class="mb-3">
+						<div class="input-group">
+							<InputFile OnChange="OnChange" class="form-control" accept=".png, .jpg, .jpeg" />
+							<ValidationMessage For="@(() => libro.Imagen)" />
+						</div>
+					</div>
+					@if (libro.Imagen != null)
+					{
+						<img src="@Convert.ToBase64String(libro.Imagen)" alt="Imagen seleccionada" />
+					}
+				</div>
+
+				<br>
+
+				@*Titulo*@
+				<div class="col-md-15">
+					<div class="input-group">
+						<span class="input-group-text">T&iacutetulo</span>
+						<InputText @bind-Value="libro.Titulo" class="form-control"></InputText>
+						<ValidationMessage For="@(() =>libro.Titulo)" />
+					</div>
+				</div>
+
+				<br>
+
+				<div class="row">
+					@*Email*@
+					<div class="col-md-6">
+						<div Class="form-group">
+							<div class="input-group">
+								<span class="input-group-text">Email</span>
+								<InputText @bind-Value="libro.Email" class="form-control"></InputText>
+								<ValidationMessage For="@(() =>libro.Email)" />
+							</div>
+						</div>
+					</div>
+
+					@*Fecha*@
+					<div class="col-md-6">
+						<div Class="form-group">
+							<div class="input-group">
+								<span class="input-group-text">Fecha</span>
+								<InputDate @bind-Value="libro.Fecha" class="form-control"></InputDate>
+								<ValidationMessage For="@(() =>libro.Fecha)" />
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<br>
+
+				@*Reseña*@
+				<div class="mb-3">
+					<div Class="form-group">
+						<div class="input-group">
+							<span class="input-group-text">Rese&ntildea</span>
+							<InputTextArea @bind-Value="libro.Resena" class="form-control"></InputTextArea>
+							<ValidationMessage For="@(() => libro.Resena)" />
+						</div>
+					</div>
+				</div>
+
+				@*Puntuacion*@
+				<div class="row">
+					<div class="col-3">
+						<div Class="form-group">
+							<div class="input-group">
+								<span class="input-group-text">Puntuaci&oacuten 1/10</span>
+								<InputNumber @bind-Value="libro.Puntuacion" class="form-control" min="1" max="10"></InputNumber>
+								<ValidationMessage For="@(() =>libro.Puntuacion)" />
+							</div>
+						</div>
+					</div>
+
+					@*Link*@
+					<div class="col-9">
+						<div Class="form-group">
+							<div class="input-group">
+								<span class="input-group-text">Link</span>
+								<input type="url" @bind="libro.Link" class="form-control" name="Link">
+								<ValidationMessage For="@(() =>libro.Link)" />
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			@*DETALLE*@
+			<fieldset class="border-success border border-1">
+				<div class="card-header">
+					<h3>Informaci&oacuten</h3>
+				</div>
+				<div class="row m-1">
+					@*TipoLibro*@
+					<div class="col-md-6">
+						<label>Categoria: </label>
+						<InputSelect @bind-Value="detalle.TipoId" class="form-select">
+							<option value="@libro.TipoId" hidden="hidden">[Seleccione]</option>
+							@foreach (var item in TiposLibrosList)
+							{
+								<option value="@item.TipoId">@item.Categoria</option>
+							}
+						</InputSelect>
+						<ValidationMessage For="@(() => detalle.TipoId)" />
+					</div>
+
+					@*Boton Agregar*@
+					<div class="col-md-5">
+						<label>Autor</label>
+						<div class="input-group">
+							<InputText @bind-Value="detalle.Autor" class="form-control"></InputText>
+							<button type="button" class="btn btn-outline-success" @onclick="AgregarDetalle">Agregar <i class="oi oi-plus" /></button>
+							<ValidationMessage For="@(() => detalle.Autor)" />
+						</div>
+					</div>
+				</div>
+
+				@*Tabla de detalles*@
+				<hr />
+				<table class="table table-bordered table-light m-1">
+					<thead class="thead">
+						<tr class="table">
+							<th>Libro ID</th>
+							<th>Categoria</th>
+							<th>Participante</th>
+						</tr>
+					</thead>
+
+					<tbody>
+						@foreach (var item in this.libro.libroDetalle)
+						{
+							<tr>
+								<td>@item.TipoId</td>
+								<td>@ObtenerDescripcion(item.TipoId)</td>
+								<td>@item.Autor</td>
+								<td><button type="button" class="btn btn-outline-danger" @onclick=@(() => RemoverDetalle(item))><i class="oi oi-trash" /></button></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+				<hr />
+			</fieldset>
+
+			@*Botones*@
+			<div class="card-footer d-flex justify-content-center">
+				<div class="btn-group" role="group">
+					<button type="button" class="btn btn-outline-primary" @onclick="Nuevo"> <i class="oi oi-file" /> Nuevo</button>
+					<button type="submit" class="btn btn-outline-success"> <i class="oi oi-document" /> Guardar</button>
+					<button type="button" class="btn btn-outline-danger" @onclick="Eliminar"><i class="io io-trash" /> Eliminar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	@if (Mensaje.Length > 0)
+	{
+		<label class="text-danger">@Mensaje</label>
+	}
+</EditForm>
+
+@code {
+	[Parameter]
+	public int LibroId { get; set; }
+	public int Total { get; set; } = 0;
+	public Libros libro { get; set; } = new Libros();
+
+	public List<byte[]> imagenes { get; set; } = new List<byte[]>();
+	private const int tamañoMaximoArchivo = 2 * 1024 * 1024;
+	private string claseEncima = string.Empty;
+
+	private string Mensaje = string.Empty;
+
+	void OnDragEnter(DragEventArgs e) => claseEncima = "hover";
+	void OnDragLeave(DragEventArgs e) => claseEncima = string.Empty;
+
+	public int TipoLibroSeleccionado { get; set; } = 0;
+	public string LibroSeleccionado { get; set; } = string.Empty;
+
+	public string ValidacionDetalle { get; set; } = string.Empty;
+
+	public LibrosDetalle detalle { get; set; } = new LibrosDetalle();
+	public IEnumerable<TipoLibro> TiposLibrosList { get; set; } = Enumerable.Empty<TipoLibro>();
+
+	async Task OnChange(InputFileChangeEventArgs e)
+	{
+		var archivo = e.File;
+		var buffer = new byte[archivo.Size];
+
+		await archivo.OpenReadStream().ReadAsync(buffer);
+		libro.Imagen = buffer;
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		var tipos = await httpClient.GetFromJsonAsync<List<TipoLibro>>("api/Tipos");
+
+		if (tipos is not null)
+		{
+			TiposLibrosList = tipos;
+		}
+
+		if (LibroId > 0)
+		{
+			this.libro.LibroId = LibroId;
+			await Buscar();
+		}
+	}
+
+	public async Task Buscar()
+	{
+		var libroEncotrado = await httpClient.GetFromJsonAsync<Libros>($"api/Libros/{libro.LibroId}");
+
+		if (libroEncotrado != null)
+		{
+			this.libro = libroEncotrado;
+			StateHasChanged();
+		}
+		else
+		{
+			notificationService.ShowNotification(
+					titulo: "Error de búsqueda",
+					mensaje: "Registro no encontrado",
+					NotificationSeverity.Error
+			);
+		}
+	}
+
+	public async Task Guardar()
+	{
+
+		if (Validar())
+		{
+			using var response = await httpClient.PostAsJsonAsync("api/Libros", libro);
+			
+			if (response.IsSuccessStatusCode)
+			{
+				var libroDevuelta = await response.Content.ReadFromJsonAsync<Libros>();
+
+				if (libroDevuelta is not null)
+				{
+					libro = libroDevuelta;
+					Nuevo();
+					notificationService.ShowNotification(
+						titulo: "Exito",
+						mensaje: "Registro guardado",
+						NotificationSeverity.Success
+					);
+				}
+				else
+				{
+					notificationService.ShowNotification(
+						titulo: "error!",
+						mensaje: "El Registro no se guardo",
+						NotificationSeverity.Error
+					);
+				}
+			}
+			else
+			{
+				notificationService.ShowNotification(
+					titulo: "error!",
+					mensaje: "!Algo salio mal!",
+					NotificationSeverity.Error
+				);
+			}
+		}
+	}
+
+	public void Nuevo()
+	{
+		this.libro = new Libros();
+		Mensaje = string.Empty;
+	}
+
+	public bool Validar()
+	{
+		if (string.IsNullOrEmpty(libro.Titulo) || libro.LibroId < 0)
+		{
+			return false;
+		}
+		if (libro.Fecha != DateTime.Today)
+		{
+			notificationService.ShowNotification(
+				titulo: "Aviso!",
+				mensaje: "La fecha debe ser la actual",
+				NotificationSeverity.Warning
+			);
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+
+	public async Task Eliminar()
+	{
+		using var response = await httpClient.DeleteAsync($"api/Libros/{libro.LibroId}");
+
+		if (Validar())
+		{
+			if (!response.IsSuccessStatusCode)
+			{
+				notificationService.ShowNotification(
+					titulo: "Error!",
+					mensaje: "No se pudo eliminar!",
+					NotificationSeverity.Error
+				);
+				return;
+			}
+			else
+			{
+				Nuevo();
+				notificationService.ShowNotification(
+					titulo: "Eliminado",
+					mensaje: "Se ha eliminado Correctamente",
+					NotificationSeverity.Success
+				);
+			}
+		}
+	}
+
+	private async Task<TipoLibro> BuscarLibros(int libroId)
+	{
+		var libro = await httpClient.GetFromJsonAsync<TipoLibro>($"api/Tipos/{libroId}");
+
+		return libro ?? new TipoLibro();
+	}
+	
+	public bool ValidarDetalle()
+	{
+		if (detalle.TipoId <= 0 || string.IsNullOrEmpty(detalle.Autor))
+		{
+			notificationService.ShowNotification(
+				titulo: "Aviso!",
+				mensaje: "Asegúrese de rellenar todos los campos del detalle!",
+				NotificationSeverity.Warning
+			);
+			return false;
+		}
+
+		return true;
+	}
+
+	public async Task AgregarDetalle()
+	{
+		if (ValidarDetalle())
+		{
+			var pelicula = await BuscarLibros(detalle.TipoId);
+			if (pelicula != null)
+			{
+				detalle.LibroId = this.libro.LibroId;
+				this.libro.libroDetalle.Add(detalle);
+				detalle = new LibrosDetalle();
+
+				notificationService.ShowNotification(
+					titulo: "Éxito",
+					mensaje: "Detalle Agregado",
+					NotificationSeverity.Success
+				);
+			}
+			else
+			{
+				notificationService.ShowNotification(
+					titulo: "Error",
+					mensaje: "Tipo de libro no válido. Asegúrese de seleccionar un Tipo de libro existente.",
+					NotificationSeverity.Error
+				);
+			}
+		}
+	}
+
+	public string ObtenerDescripcion(int Id)
+	{
+		return TiposLibrosList.Where(p => p.TipoId == Id).FirstOrDefault().Categoria;
+	}
+
+	public void RemoverDetalle(LibrosDetalle detalle)
+	{
+		libro.libroDetalle.Remove(detalle);
+	}
+}

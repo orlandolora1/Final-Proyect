@@ -1,0 +1,150 @@
+﻿@page "/c_libro"
+@inject HttpClient httpClient
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.AspNetCore.Components.Authorization;
+@attribute [Authorize]
+
+<div class="card">
+	<div class="card-header">
+		<h3 class="card align-items-center">Consulta de Libros</h3>
+	</div>
+	<style>
+		.tarjeta-azul {
+			background-color: #007bff;
+			color: #fff;
+		}
+	</style>
+	<div class="card">
+
+		<div class="card-body">
+			<form>
+				<div class="input-group d-flex align-items-end">
+					<InputSelect class="form-control col-2" @bind-Value="FiltroTitulo">
+						<option value="0" hidden="hidden">[Seleccione]</option>
+						<option value="1">Titulo</option>
+						<option value="2">Fecha</option>
+						<option value="3">Puntuación</option>
+					</InputSelect>
+
+					<div class="flex-fill mx-2">
+
+						@if (FiltroTitulo == "1")
+						{
+							<div class="input-group">
+								<label class="input-group-text"> Titulo </label>
+								<InputText class="form-control" @bind-Value="Criterio" />
+							</div>
+						}
+
+						@if (FiltroTitulo == "2")
+						{
+							<div class="input-group">
+								<label class="input-group-text"> Fecha </label>
+								<InputDate class="form-control" @bind-Value="FiltroFecha" />
+							</div>
+						}
+
+						@if (FiltroTitulo == "3")
+						{
+							<div class="input-group">
+								<label class="input-group-text"> Puntuaci&oacuten 1/10 </label>
+								<InputNumber class="form-control" min="1" max="10" @bind-Value="FiltroPuntuacion" />
+							</div>
+						}
+					</div>
+
+					<button type="button" class="btn btn-sm-10 btn-primary" @onclick="Buscar">
+						<span class="oi oi-magnifying-glass"></span> Buscar
+					</button>
+				</div>
+			</form>
+		</div>
+
+		<br>
+
+		@if (Libro is not null)
+		{
+			<div class="row">
+				@foreach (var libro in Libro)
+				{
+					<div class="col-md-4 mb-4">
+						<div class="card tarjeta-azul">
+
+							<td>
+								@if (libro.Imagen != null)
+								{
+									var base64 = Convert.ToBase64String(libro.Imagen);
+									var imgSrc = $"data:image/jpeg;base64,{base64}";
+									<img src="@imgSrc" alt="Imagen del curso" width="327" height="300" />
+								}
+							</td>
+
+							<div class="row">
+								<div class="col-md-13">
+									<li class="list-group-item"><strong>Link:</strong><a href="@libro.Link" class="btn btn-outline-primary">Link</a></li>
+								</div>
+							</div>
+
+							<ul class="list-group list-group-flush">
+								<li class="list-group-item"><strong>Titulo:</strong> @libro.Titulo</li>
+								<li class="list-group-item"><strong>Email:</strong> @libro.Email</li>
+								<li class="list-group-item"><strong>Fecha:</strong> @libro.Fecha.ToString("dd/MM/yyyy")</li>
+								<li class="list-group-item"><strong>Rese&ntildea:</strong> @libro.Resena</li>
+								<li class="list-group-item"><strong>Puntuaci&oacuten:</strong> @libro.Puntuacion</li>
+								<td><a href="Libro/@libro.LibroId" class="card align-items-center">Registro</a></td>
+							</ul>
+
+						</div>
+					</div>
+				}
+			</div>
+		}
+	</div>
+
+	<div class="card-footer">
+		<div class="form-row justify-content-sm-between" aria-orientation="vertical">
+			<div class="col-3">
+				<label for="CantidaRegistro" class="col-form-label"><strong>Post</strong>&nbsp;</label>
+				<input id="CantidaRegistro" @bind-value="@conteo" disabled class="form-control" />
+			</div>
+		</div>
+	</div>
+
+</div>
+
+@code {
+	public string? FiltroTitulo { get; set; }
+	public DateTime? FiltroFecha { get; set; }
+	public int? FiltroPuntuacion { get; set; }
+
+	public List<Libros>? Libro { get; set; }
+	public int conteo { get; set; }
+	public string? filtro { get; set; }
+	public string? Criterio { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		await Buscar();
+	}
+
+	public async Task Buscar()
+	{
+		Libro = await httpClient.GetFromJsonAsync<List<Libros>>($"api/Libros");
+
+		if (FiltroTitulo != string.Empty && FiltroTitulo == "1")
+		{
+			Libro = Libro.Where(l => l.Titulo.Contains(Criterio, StringComparison.OrdinalIgnoreCase)).ToList();
+		}
+		else if (FiltroFecha != null && FiltroTitulo == "2")
+		{
+			Libro = Libro.Where(l => l.Fecha.Date == FiltroFecha.Value.Date).ToList();
+		}
+		else if (FiltroPuntuacion != null && FiltroTitulo == "3")
+		{
+			Libro = Libro.Where(l => l.Puntuacion == FiltroPuntuacion).ToList();
+		}
+
+		conteo = Libro != null ? Libro.Count() : 0;
+		StateHasChanged();
+	}
+}

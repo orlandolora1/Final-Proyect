@@ -1,0 +1,414 @@
+﻿@page "/Olimpiada"
+@page "/Olimpiada/{OlimpiadaId:int}"
+@inject HttpClient httpClient
+@inject NotificationService notificationService
+@using Newtonsoft.Json;
+@using System.Text;
+@using Microsoft.AspNetCore.Authorization;
+@using Microsoft.AspNetCore.Components.Authorization;
+@attribute [Authorize]
+
+<EditForm Model="olimpiada" OnValidSubmit="Guardar">
+	<DataAnnotationsValidator />
+
+	<div class="container">
+		<div class="card shadow-lg">
+
+			@*Encabezado*@
+			<div class="card-header">
+				<h3 class="card align-items-center">Olimpiadas</h3>
+			</div>
+
+			<div class="card-body">
+				@*Buscar*@
+				<div class="col-xs-12 col-sm-12 col-md-8 col-lg-6 col-xl-4">
+					<label>Buscar Olimpiada</label>
+					<div class="input-group mb-3">
+						<InputNumber @bind-Value="olimpiada.OlimpiadaId" class="form-control" aria-describedby="buscarButton" />
+						<button @onclick="Buscar" class="btn btn-outline-primary" type="button" id="buscarButton">
+							<i class="oi oi-magnifying-glass" />
+						</button>
+					</div>
+				</div>
+
+				@*Imagen*@
+				<div class="mb-3">
+					<div class="mb-3">
+						<div class="input-group">
+							<InputFile OnChange="OnChange" class="form-control" accept=".png, .jpg, .jpeg" />
+							<ValidationMessage For="@(() => olimpiada.Imagen)" />
+						</div>
+					</div>
+					@if (olimpiada.Imagen != null)
+					{
+						<img src="@Convert.ToBase64String(olimpiada.Imagen)" alt="Imagen seleccionada" />
+					}
+				</div>
+
+				<br>
+
+				@*Titulo*@
+				<div class="col-md-15">
+					<div class="input-group">
+						<span class="input-group-text">T&iacutetulo</span>
+						<InputText @bind-Value="olimpiada.Titulo" class="form-control"></InputText>
+						<ValidationMessage For="@(() =>olimpiada.Titulo)" />
+					</div>
+				</div>
+
+				<br>
+
+				<div class="row">
+					@*Email*@
+					<div class="col-md-6">
+						<div Class="form-group">
+							<div class="input-group">
+								<span class="input-group-text">Email</span>
+								<InputText @bind-Value="olimpiada.Email" class="form-control"></InputText>
+								<ValidationMessage For="@(() =>olimpiada.Email)" />
+							</div>
+						</div>
+					</div>
+
+					@*Fecha*@
+					<div class="col-md-6">
+						<div Class="form-group">
+							<div class="input-group">
+								<span class="input-group-text">Fecha</span>
+								<InputDate @bind-Value="olimpiada.Fecha" class="form-control"></InputDate>
+								<ValidationMessage For="@(() =>olimpiada.Fecha)" />
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<br>
+
+				@*Reseña*@
+				<div class="mb-3">
+					<div Class="form-group">
+						<div class="input-group">
+							<span class="input-group-text">Rese&ntildea</span>
+							<InputTextArea @bind-Value="olimpiada.Resena" class="form-control"></InputTextArea>
+							<ValidationMessage For="@(() => olimpiada.Resena)" />
+						</div>
+					</div>
+				</div>
+
+				@*Puntuacion*@
+				<div class="row">
+					<div class="col-3">
+						<div Class="form-group">
+							<div class="input-group">
+								<span class="input-group-text">Puntuaci&oacuten 1/10</span>
+								<InputNumber @bind-Value="olimpiada.Puntuacion" class="form-control" min="1" max="10"></InputNumber>
+								<ValidationMessage For="@(() =>olimpiada.Puntuacion)" />
+							</div>
+						</div>
+					</div>
+
+					@*Participantes*@
+					<div class="col-9">
+						<div Class="form-group">
+							<div class="input-group">
+								<span class="input-group-text">Participantes</span>
+								<input type="url" @bind="olimpiada.Observacion" class="form-control" name="Participantes">
+								<ValidationMessage For="@(() =>olimpiada.Observacion)" />
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			@*DETALLE*@
+			<fieldset class="border-success border border-1">
+				<div class="card-header">
+					<h3>Informaci&oacuten</h3>
+				</div>
+				<div class="row m-1">
+					@*TipoParticipante*@
+					<div class="col-md-6">
+						<label>G&eacutenero: </label>
+						<InputSelect @bind-Value="detalle.TipoOlimpiadaId" class="form-select">
+							<option value="@olimpiada.TipoOlimpiadaId" hidden="hidden">[Seleccione]</option>
+							@foreach (var item in TiposOlimpiadasList)
+							{
+								<option value="@item.TipoOlimpiadaId">@item.Categoria</option>
+							}
+						</InputSelect>
+						<ValidationMessage For="@(() => detalle.TipoOlimpiadaId)" />
+					</div>
+
+					@*Boton Agregar*@
+					<div class="col-md-5">
+						<label>Actores</label>
+						<div class="input-group">
+							<InputText @bind-Value="detalle.Participantes" class="form-control"></InputText>
+							<button type="button" class="btn btn-outline-success" @onclick="AgregarDetalle">Agregar <i class="oi oi-plus" /></button>
+							<ValidationMessage For="@(() => detalle.Participantes)" />
+						</div>
+					</div>
+				</div>
+
+				@*Tabla de detalles*@
+				<hr />
+				<table class="table table-bordered table-light m-1">
+					<thead class="thead">
+						<tr class="table">
+							<th>Olimpiada ID</th>
+							<th>Categoria</th>
+							<th>Participante</th>
+						</tr>
+					</thead>
+
+					<tbody>
+						@foreach (var item in this.olimpiada.olimpiadaDetalle)
+						{
+							<tr>
+								<td>@item.TipoOlimpiadaId</td>
+								<td>@ObtenerDescripcion(item.TipoOlimpiadaId)</td>
+								<td>@item.Participantes</td>
+								<td><button type="button" class="btn btn-outline-danger" @onclick=@(() => RemoverDetalle(item))><i class="oi oi-trash" /></button></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+				<hr />
+			</fieldset>
+
+			@*Botones*@
+			<div class="card-footer d-flex justify-content-center">
+				<div class="btn-group" role="group">
+					<button type="button" class="btn btn-outline-primary" @onclick="Nuevo"> <i class="oi oi-file" /> Nuevo</button>
+					<button type="submit" class="btn btn-outline-success"> <i class="oi oi-document" /> Guardar</button>
+					<button type="button" class="btn btn-outline-danger" @onclick="Eliminar"><i class="io io-trash" /> Eliminar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	@if (Mensaje.Length > 0)
+	{
+		<label class="text-danger">@Mensaje</label>
+	}
+</EditForm>
+
+@code {
+	[Parameter]
+	public int OlimpiadaId { get; set; }
+	public Olimpiadas olimpiada { get; set; } = new Olimpiadas();
+
+	public List<byte[]> imagenes { get; set; } = new List<byte[]>();
+	private const int tamañoMaximoArchivo = 2 * 1024 * 1024;
+	private string claseEncima = string.Empty;
+
+	private string Mensaje = string.Empty;
+
+	void OnDragEnter(DragEventArgs e) => claseEncima = "hover";
+	void OnDragLeave(DragEventArgs e) => claseEncima = string.Empty;
+
+	public int TipoOlimpiadaSeleccionada { get; set; } = 0;
+	public string OlimpiadaSeleccionada { get; set; } = string.Empty;
+	public string ValidacionDetalle { get; set; } = string.Empty;
+
+	public OlimpiadasDetalle detalle { get; set; } = new OlimpiadasDetalle();
+	public IEnumerable<TipoOlimpiada> TiposOlimpiadasList { get; set; } = Enumerable.Empty<TipoOlimpiada>();
+
+	async Task OnChange(InputFileChangeEventArgs e)
+	{
+		var archivo = e.File;
+		var buffer = new byte[archivo.Size];
+
+		await archivo.OpenReadStream().ReadAsync(buffer);
+		olimpiada.Imagen = buffer;
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		var tipos = await httpClient.GetFromJsonAsync<List<TipoOlimpiada>>("api/Peli");
+
+		if (tipos is not null)
+		{
+			TiposOlimpiadasList = tipos;
+		}
+
+		if (OlimpiadaId > 0)
+		{
+			this.olimpiada.OlimpiadaId = OlimpiadaId;
+			await Buscar();
+		}
+	}
+
+	public async Task Buscar()
+	{
+		var olipiadaEncotrado = await httpClient.GetFromJsonAsync<Olimpiadas>($"api/Peliculas/{olimpiada.OlimpiadaId}");
+
+		if (olipiadaEncotrado != null)
+		{
+			this.olimpiada = olipiadaEncotrado;
+			StateHasChanged();
+		}
+		else
+		{
+			notificationService.ShowNotification(
+					titulo: "Error de búsqueda",
+					mensaje: "Registro no encontrado",
+					NotificationSeverity.Error
+			);
+		}
+	}
+
+	public async Task Guardar()
+	{
+
+		if (Validar())
+		{
+			using var response = await httpClient.PostAsJsonAsync("api/Peliculas", olimpiada);
+			
+			if (response.IsSuccessStatusCode)
+			{
+				var olimpiadaDevuelta = await response.Content.ReadFromJsonAsync<Olimpiadas>();
+
+				if (olimpiadaDevuelta is not null)
+				{
+					this.olimpiada = olimpiadaDevuelta;
+					Nuevo();
+					notificationService.ShowNotification(
+						titulo: "Exito",
+						mensaje: "Registro guardado",
+						NotificationSeverity.Success
+					);
+				}
+				else
+				{
+					notificationService.ShowNotification(
+						titulo: "error!",
+						mensaje: "El Registro no se guardo",
+						NotificationSeverity.Error
+					);
+				}
+			}
+			else
+			{
+				notificationService.ShowNotification(
+					titulo: "error!",
+					mensaje: "!Algo salio mal!",
+					NotificationSeverity.Error
+				);
+			}
+		}
+	}
+
+	public void Nuevo()
+	{
+		this.olimpiada = new Olimpiadas();
+		Mensaje = string.Empty;
+	}
+
+	public bool Validar()
+	{
+		if (string.IsNullOrEmpty(olimpiada.Titulo) || olimpiada.OlimpiadaId < 0)
+		{
+			return false;
+		}
+		if (olimpiada.Fecha != DateTime.Today)
+		{
+			notificationService.ShowNotification(
+				titulo: "Aviso!",
+				mensaje: "La fecha debe ser la actual",
+				NotificationSeverity.Warning
+			);
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+
+	public async Task Eliminar()
+	{
+		using var response = await httpClient.DeleteAsync($"api/Peliculas/{olimpiada.OlimpiadaId}");
+
+		if (Validar())
+		{
+			if (!response.IsSuccessStatusCode)
+			{
+				notificationService.ShowNotification(
+					titulo: "Error!",
+					mensaje: "No se pudo eliminar!",
+					NotificationSeverity.Error
+				);
+				return;
+			}
+			else
+			{
+				Nuevo();
+				notificationService.ShowNotification(
+					titulo: "Eliminado",
+					mensaje: "Se ha eliminado Correctamente",
+					NotificationSeverity.Success
+				);
+			}
+		}
+	}
+
+	private async Task<TipoOlimpiada> BuscarOlimpiadas(int olimpiadaId)
+	{
+		var olimpiada = await httpClient.GetFromJsonAsync<TipoOlimpiada>($"api/Peli/{olimpiadaId}");
+
+		return olimpiada ?? new TipoOlimpiada();
+	}
+
+	public bool ValidarDetalle()
+	{
+		if (detalle.TipoOlimpiadaId <= 0 || string.IsNullOrEmpty(detalle.Participantes))
+		{
+			notificationService.ShowNotification(
+				titulo: "Aviso!",
+				mensaje: "Asegúrese de rellenar todos los campos del detalle!",
+				NotificationSeverity.Warning
+			);
+			return false;
+		}
+
+		return true;
+	}
+
+	public async Task AgregarDetalle()
+	{
+		if (ValidarDetalle())
+		{
+			var olimpiada = await BuscarOlimpiadas(detalle.TipoOlimpiadaId);
+			if (olimpiada != null)
+			{
+				detalle.OlimpiadaId = this.olimpiada.OlimpiadaId;
+				this.olimpiada.olimpiadaDetalle.Add(detalle);
+				detalle = new OlimpiadasDetalle();
+
+				notificationService.ShowNotification(
+					titulo: "Éxito",
+					mensaje: "Detalle Agregado",
+					NotificationSeverity.Success
+				);
+			}
+			else
+			{
+				notificationService.ShowNotification(
+					titulo: "Error",
+					mensaje: "Tipo de olimpiada no válido. Asegúrese de seleccionar un Tipo de Olimpiada existente.",
+					NotificationSeverity.Error
+				);
+			}
+		}
+	}
+
+	public string ObtenerDescripcion(int Id)
+	{
+		return TiposOlimpiadasList.Where(p => p.TipoOlimpiadaId == Id).FirstOrDefault().Categoria;
+	}
+
+	public void RemoverDetalle(OlimpiadasDetalle detalle)
+	{
+		olimpiada.olimpiadaDetalle.Remove(detalle);
+	}
+}
